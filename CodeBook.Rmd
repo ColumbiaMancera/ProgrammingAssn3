@@ -1,0 +1,97 @@
+---
+title: "CodeBook"
+author: "Angel Mancera"
+date: "6/1/2020"
+output: pdf_document
+---
+
+## Course Project
+Hereby we will understand the variables of the final data set. 
+
+## Initial Files
+After downloading and unzipping the zip file we can recognize six files that will be useful: 
+x_train.txt, x_test.txt, y_train.txt, y_test.txt, subject_train.txt and subject_test.txt. 
+
+These files contain the data and information for naming the variables correctly. 
+We use specifically the features file to label correctly both x_something files 
+as it contains the good variable name. The same is for the activity file with the 
+y_something files. 
+
+## The Inner-Workings of the Project
+Firstly, we download the files using the download.file function, and the two if statements:
+```{r setup}
+files <- "getdata_projectfiles_UCI HAR Dataset.zip"
+
+if (!file.exists(files)){
+    fileURL <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+    download.file(fileURL, files, method="curl")
+}  
+
+if (!file.exists("UCI HAR Dataset")) { 
+    unzip(files) 
+}
+```
+These essentially check if the file has already been downloaded, and if not, it downloads it!
+
+Then, we read every data table: 
+``` {r follow-up}
+feat <- read.table("UCI HAR Dataset/features.txt", col.names = c("n","functions"))
+actvs <- read.table("UCI HAR Dataset/activity_labels.txt", col.names = c("code", "activity"))
+subject.ta <- read.table("UCI HAR Dataset/train/subject_train.txt", col.names = "subject")
+subject.te <- read.table("UCI HAR Dataset/test/subject_test.txt", col.names = "subject")
+X.te <- read.table("UCI HAR Dataset/test/X_test.txt", col.names = feat$functions)
+y.te <- read.table("UCI HAR Dataset/test/y_test.txt", col.names = "code")
+X.ta <- read.table("UCI HAR Dataset/train/X_train.txt", col.names = feat$functions)
+y.ta <- read.table("UCI HAR Dataset/train/y_train.txt", col.names = "code")
+```
+
+This is then used to complete the first task of the assignment, which is to merge the files:
+``` {r merge}
+## 1. Merging the training and test set...
+X <- rbind(X.ta, X.te)
+Y <- rbind(y.ta, y.te)
+
+# Merging the subject files
+sujeto <- rbind(subject.ta, subject.te)
+MergeResult <- cbind(sujeto, Y, X)
+```
+
+As we create the merged result data base, then we have to look for the mean and stdev and make another data table:
+``` {r merge follow-up}
+## 2. Taking the mean and standard deviation for the values...
+CompData <- MergeResult %>% select(subject, code, contains("mean"), contains("std"))
+```
+
+And then, we name the activities in the data set:
+``` {r naming}
+## 3. Naming the activities in the data set...
+CompData$code <- actvs[CompData$code, 2]
+```
+
+To which we finally label the names:
+``` {r labeling}
+names(CompData)[2] = "activity"
+names(CompData)<-gsub("Acc", "Accelerometer", names(CompData))
+names(CompData)<-gsub("Gyro", "Gyroscope", names(CompData))
+names(CompData)<-gsub("BodyBody", "Body", names(CompData))
+names(CompData)<-gsub("Mag", "Magnitude", names(CompData))
+names(CompData)<-gsub("^t", "Time", names(CompData))
+names(CompData)<-gsub("^f", "Frequency", names(CompData))
+names(CompData)<-gsub("tBody", "TimeBody", names(CompData))
+names(CompData)<-gsub("-mean()", "Mean", names(CompData), ignore.case = TRUE)
+names(CompData)<-gsub("-std()", "STD", names(CompData), ignore.case = TRUE)
+names(CompData)<-gsub("-freq()", "Frequency", names(CompData), ignore.case = TRUE)
+names(CompData)<-gsub("angle", "Angle", names(CompData))
+names(CompData)<-gsub("gravity", "Gravity", names(CompData))
+```
+
+And we print the resulting graph!
+``` {r table}
+FinalData <- CompData %>%
+    group_by(subject, activity) %>%
+    summarise_all(funs(mean))
+write.table(FinalData, "FinalData.txt", row.name=FALSE)
+head(FinalData)
+```
+
+And that is it for the project!
